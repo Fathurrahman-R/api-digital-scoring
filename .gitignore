@@ -1,0 +1,6 @@
+*.log
+.env
+.env.backup
+.env.production
+/.idea
+/config
