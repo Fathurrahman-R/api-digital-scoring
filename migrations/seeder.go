@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -29,22 +30,13 @@ func Seed(db *gorm.DB) error {
 // seedUsers mengisi tabel users dengan data dummy
 func seedUsers(db *gorm.DB) error {
 	fmt.Println("👥 Seeding users...")
-
+	hashed, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	users := []entity.User{
 		{
+			Fullname: "Admin",
 			Username: "admin",
 			Email:    "admin@example.com",
-			Password: "$2a$10$...", // Hash password yang sebenarnya
-		},
-		{
-			Username: "user1",
-			Email:    "user1@example.com",
-			Password: "$2a$10$...",
-		},
-		{
-			Username: "user2",
-			Email:    "user2@example.com",
-			Password: "$2a$10$...",
+			Password: string(hashed), // Hash password yang sebenarnya
 		},
 	}
 
