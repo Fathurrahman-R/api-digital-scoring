@@ -35,8 +35,15 @@ func main() {
 	}
 
 	// JWT contruct //
-	accessTTL, _ = time.ParseDuration(cfg.JWT.AccessTokenLifetime)
-	refreshTTL, _ = time.ParseDuration(cfg.JWT.RefreshTokenLifetime)
+	accessTTL, err := time.ParseDuration(cfg.JWT.AccessTokenLifetime)
+	if err != nil {
+		log.Fatalf("invalid access_token_lifetime: %v", err)
+	}
+
+	refreshTTL, err := time.ParseDuration(cfg.JWT.RefreshTokenLifetime)
+	if err != nil {
+		log.Fatalf("invalid refresh_token_lifetime: %v", err)
+	}
 	jwtManager := auth.NewJWTManager(cfg.JWT.AccessSecret, accessTTL, refreshTTL)
 
 	// Repositories //
@@ -60,9 +67,9 @@ func main() {
 	authGroup := r.Group("/auth")
 	authHandler.RegisterRoutes(authGroup)
 
-	private := r.Group("/api")
-	userHandler.RegisterRoutes(private)
+	private := r.Group("/")
 	private.Use(authMiddleware.Middleware())
+	userHandler.RegisterRoutes(private)
 
 	err = r.Run(":" + cfg.Server.Port)
 	if err != nil {
