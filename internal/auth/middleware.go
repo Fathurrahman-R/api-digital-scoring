@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -40,26 +41,21 @@ func (m *GinAuthMiddleware) Middleware() gin.HandlerFunc {
 		}
 
 		// Mengambil jwt claims dan disimpan sebagai map
-		claims, ok := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(*jwt.RegisteredClaims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			c.Abort()
 			return
 		}
 
-		// Ambil user id didalam claim dan diparsing dari JSON number ke float64
-		userIDFloat, ok := claims["user_id"].(float64)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "user_id missing in token"})
+		userID, err := strconv.ParseUint(claims.Subject, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid subject"})
 			c.Abort()
 			return
 		}
 
-		// Konversi float user id ke uint
-		userID := uint(userIDFloat)
-
-		// Simpan userID ke Gin Context untuk gunakan di handler
-		c.Set("userID", userID)
+		c.Set("userID", uint(userID))
 
 		// Lanjutkan ke handler
 		c.Next()

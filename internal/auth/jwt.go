@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"   // Package untuk hash refresh token
 	"encoding/base64" // Untuk encoding token agar bisa dikirim melalui JSON/HTTP
 	"encoding/hex"    // Mengubah hash menjadi string
-	"time"            // Untuk TTL (Time to Live) token
+	"errors"
+	"fmt"
+	"time" // Untuk TTL (Time to Live) token
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -31,18 +33,13 @@ Fungsi untuk generate Access token
 */
 
 func (m *JWTManager) GenerateAccessToken(userID uint) (string, error) {
-
-	// Membuat claim dalam bentuk map
-	claims := jwt.MapClaims{
-		"user_id": userID,                             // User pemilik access token
-		"exp":     time.Now().Add(m.AccessTTL).Unix(), // Kapan token tersebut expires
-		"iat":     time.Now().Unix(),                  // Kapan token tersebut dibuat
+	claims := jwt.RegisteredClaims{
+		Subject:   fmt.Sprintf("%d", userID),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.AccessTTL)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 
-	// Membuat objek JWT lengkap dengan claims dan algoritma HMAC SHA256 (symetric secret)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// JWT ditandatangani menggunakan AccessSecret dan menghasilkan string token
 	return token.SignedString([]byte(m.AccessSecret))
 }
 
@@ -50,13 +47,27 @@ func (m *JWTManager) GenerateAccessToken(userID uint) (string, error) {
 Fungsi untuk verifikasi Access token
 */
 
-func (m *JWTManager) VerifyAccessToken(token string) (*jwt.Token, error) {
+func (m *JWTManager) VerifyAccessToken(tokenStr string) (*jwt.Token, error) {
+	claims := &jwt.RegisteredClaims{}
 
-	// Parsing token dan verifikasi signature
-	// Callback function untuk mendapatkan signing key
-	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+	parser := jwt.NewParser(
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithLeeway(0),
+	)
+
+	token, err := parser.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(m.AccessSecret), nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("token tidak valid")
+	}
+
+	return token, nil
 }
 
 /*
